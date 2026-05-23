@@ -5,11 +5,26 @@
 #include <linux/device.h>
 #include <linux/uaccess.h>
 
-#define DEVICE_NAME "simplechar"
+// /dev/DEVICE_NAME
+#define DEVICE_NAME "fakeimu"
 
+// major/minor number
 static dev_t dev_num;
-static struct cdev simple_cdev;
-static struct class *simple_class;
+
+static struct cdev fakeimu_cdev;
+static struct class *fakeimu_class;
+
+// fake data
+static struct imu_data {
+  double pitch;
+  double roll;
+  double yaw;
+  double accel_x;
+  double accel_y;
+  double accel_z; 
+};
+
+static struct imu_data imu;
 
 static char msg[] = "hello, from kernel!\n";
 
@@ -18,11 +33,14 @@ static int dev_open(struct inode *inode, struct file *file) {
   return 0;
 }
 
+// read()
 static ssize_t dev_read(
   struct file *file,
   char __user *buffer,
   size_t len,
   loff_t *offset) {
+
+
   int msg_len = strlen(msg);
 
   if (*offset >= msg_len)
@@ -43,7 +61,7 @@ static struct file_operations fops = {
   .read = dev_read,
 };
 
-static int __init simple_init(void) {
+static int __init fakeimu_init(void) {
   int ret;
   // major = register_chrdev()
   ret = alloc_chrdev_region(&dev_num, 0, 1, DEVICE_NAME);
@@ -53,20 +71,20 @@ static int __init simple_init(void) {
   
   printk(KERN_INFO "major = %d, minor = %d\n", MAJOR(dev_num), MINOR(dev_num));
 
-  cdev_init(&simple_cdev, &fops);
+  cdev_init(&fakeimu_cdev, &fops);
   
-  ret = cdev_add(&simple_cdev, dev_num, 1);
+  ret = cdev_add(&fakeimu_cdev, dev_num, 1);
 
   if (ret < 0)
     return ret;
 
-  simple_class = class_create(DEVICE_NAME);
+  fakeimu_class = class_create(DEVICE_NAME);
 
-  if (IS_ERR(simple_class))
-    return PTR_ERR(simple_class);
+  if (IS_ERR(fakeimu_class))
+    return PTR_ERR(fakeimu_class);
   
   device_create(
-    simple_class,
+    fakeimu_class,
     NULL,
     dev_num,
     NULL,
@@ -77,10 +95,10 @@ static int __init simple_init(void) {
   return 0;
 }
 
-static void __exit simple_exit(void) {
-  device_destroy(simple_class, dev_num);
-  class_destroy(simple_class);
-  cdev_del(&simple_cdev);
+static void __exit fakeimu_exit(void) {
+  device_destroy(fakeimu_class, dev_num);
+  class_destroy(fakeimu_class);
+  cdev_del(&fakeimu_cdev);
   unregister_chrdev_region(dev_num, 1);
 
 
@@ -88,8 +106,8 @@ static void __exit simple_exit(void) {
   printk(KERN_INFO "unloaded!");
 }
 
-module_init(simple_init);
-module_exit(simple_exit);
+module_init(fakeimu_init);
+module_exit(fakeimu_exit);
 
 MODULE_LICENSE("GPL");
-MODULE_DESCRIPTION("Modern version of simplechar");
+MODULE_DESCRIPTION("FakeImu driver for testing");

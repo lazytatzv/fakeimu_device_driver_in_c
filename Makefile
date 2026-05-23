@@ -1,4 +1,4 @@
-obj-m += simplechar.o
+obj-m += fakeimu.o
 
 all:
 	make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
